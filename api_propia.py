@@ -1,16 +1,21 @@
 # Ejecuta main.py y publica el reporte JSON que genera.
-#   python -m uvicorn api_propia:app --reload
+# Para prenderla, escribir en la terminal:
+#   Mac:     python3 -m uvicorn api_propia:app --reload
+#   Windows: python -m uvicorn api_propia:app --reload
+
 import glob
 import json
 import os
 
 from fastapi import FastAPI, HTTPException, Security, Depends
 from fastapi.security import APIKeyHeader
+from dotenv import load_dotenv
 
 import main
 
 CARPETA_SALIDAS = os.path.join(os.path.dirname(os.path.abspath(__file__)), "salidas")
-API_KEYS_VALIDAS = ["clave_secreta_123", "mi_otra_clave_456", "clave_admin_789"]
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))   # lee las claves del archivo .env
+API_KEYS_VALIDAS = [os.getenv("API_KEY")]    # la clave se lee del .env, no queda escrita en el código
 
 encabezado = APIKeyHeader(name="X-API-Key", auto_error=False)
 
@@ -36,11 +41,9 @@ def generar():
     main.main()
     return cargar_reporte()
 
-
 @app.get("/reporte")
 def ver_reporte():
     return cargar_reporte()
-
 
 @app.get("/reporte/{sku}")
 def ver_libro(sku: str):

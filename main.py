@@ -5,7 +5,7 @@
 # (books.toscrape.com) y le avisa al equipo de Compras qué hacer.
 
 # books.toscrape.com: imita una librería online de 1.000 libros, 50 páginas, cada uno con título, 
-# precio en £ libras, estrellas, stock y categoría.
+# precio en £ libras y stock.
 
 # Para pasar libras a pesos y comparar los precios usamos la api (ExchangeRate-API)
 
@@ -25,7 +25,7 @@
 # 2. TRANSFORMAR: pasar a pesos, comparar, clasificar y recomendar
 # 3. CARGAR: tabla con Pandas, Excel, gráfico, POST y mail
 
-import os                       # Modulo que permite al programa con archivos, carpetas, sistema operativo
+import os                       # Modulo que permite al programa trabajar con archivos, carpetas, sistema operativo
 import datetime                 # Permite trabajar con fechas, horas
 from dotenv import load_dotenv  # Lee las variables definidas en el archivo .env y las carga en el entorno
                                 
@@ -36,7 +36,6 @@ import funciones                    # Funciones principales del negocio
 import reportes                     # Analisis con pandas
 import correo                       # Envia analisis a destinatarios por gmail
 
-# ---------------------------------------------------------------------
 # CONFIGURACIÓN
 
 CARPETA = os.path.dirname(os.path.abspath(__file__))
@@ -48,11 +47,10 @@ load_dotenv(os.path.join(CARPETA, ".env"))
 GMAIL_USUARIO = os.getenv("GMAIL_USUARIO")
 GMAIL_PASSWORD = os.getenv("GMAIL_PASSWORD_APP")
 
-def titulo(texto):                         #función que imprime un título entre dos líneas de = para separar las partes del programa     
-    print("\n" + "=" * 70)                 #"\n": deja un renglon vacio
+def titulo(texto):                 #función que imprime un título entre dos líneas de = para separar las partes del programa     
+    print("\n" + "=" * 70)         #"\n": deja un renglon vacio
     print("  " + texto)
     print("=" * 70)
-
 
 def mostrar_comparacion(resultados):        #Imprime la comparación libro por libro.
     for fila in resultados:
@@ -64,6 +62,43 @@ def mostrar_comparacion(resultados):        #Imprime la comparación libro por l
                   "| competidor: $", round(fila["precio_competidor"]),
                   "| variación:", fila["variacion_pct"], "% |", fila["clasificacion"])  #variacion_pct
 
+# Orden en que aparecen las acciones en el mail (lo más urgente primero)
+
+ORDEN_ACCIONES = [
+    "URGENTE: reponer y revisar precio",
+    "Reponer stock",
+    "Revisar precio",
+    "Destacar en promoción",
+    "Mantener precio",
+    "No se vende en el competidor",
+]
+
+def armar_cuerpo_mail(resultados, resumen, tasa):
+    """Arma el texto del mail: un resumen corto y los libros agrupados por lo que hay que hacer."""
+    cuerpo = "Hola equipo de Compras,\n\n"
+    cuerpo += f"Comparamos {resumen['total_libros']} libros con el competidor el {resumen['fecha']}.\n"
+    cuerpo += f"Cotización usada: 1 libra = $ {round(tasa, 2)}\n\n"
+    cuerpo += "QUÉ HACER CON CADA LIBRO\n"
+
+    for accion in ORDEN_ACCIONES:
+        # Primero juntamos los libros que tienen esta acción
+        libros = []
+        for fila in resultados:
+            if fila["recomendacion"] == accion:
+                libros.append(fila)
+        if len(libros) == 0:          # si ningún libro tiene esta acción, no la mostramos
+            continue
+
+        cuerpo += f"\n{accion.upper()} ({len(libros)})\n"
+        for fila in libros:
+            cuerpo += f"  - {fila['sku']} {fila['titulo']}: nuestro $ {fila['precio_propio']}"
+            if fila["precio_competidor"] is not None:
+                cuerpo += f" / competidor $ {round(fila['precio_competidor'])} ({fila['variacion_pct']} %)"
+            cuerpo += f" / stock {fila['stock']}\n"
+
+    cuerpo += "\nSe adjunta el Excel con el detalle y el gráfico de precios por libro.\n"
+    return cuerpo
+
 # Funcion principal: pusimos el programa dentro de una funcion main() para usar return y frenar si algo falla
 
 def main():
@@ -72,7 +107,6 @@ def main():
     fecha_hoy = datetime.datetime.now().strftime("%d/%m/%Y %H:%M")  #strftime es para dar formato texto a una fecha
     print("  Fecha:", fecha_hoy)
 
-    # =================================================================
     # 1. EXTRAER
 
     titulo("1. EXTRAER DATOS")
@@ -85,10 +119,6 @@ def main():
 
     print("\n[Sitio del competidor]")
     print("  Sitio:", apis_terceros.URL_COMPETIDOR)
-    if not apis_terceros.puede_scrapear(apis_terceros.URL_COMPETIDOR):      #Llama a la funcion puede_scrapear que lee el robots.txt para ver si nos permite scrapear
-        print("  El robots.txt no permite entrar. Fin del programa.")       # Si no nos permite, termina el programa
-        return
-    print("  robots.txt: permitido")
 
     print("\n[Web scraping]")                                                       #Bloque de scrappeo
     precios_competidor = apis_terceros.scrapear_competidor(cantidad_paginas=1)      
@@ -99,12 +129,8 @@ def main():
 
     print("\n[API de tipo de cambio]")                      #Bloque API: averigua cuantos pesos vale una libra
     tasa = apis_terceros.obtener_tasa_libra()               #Obtener_tasa_libra pide la cotizacion y la guarda en la variabale: tasa
-    if tasa is None:
-        print("  Sin cotización no se puede comparar. Fin del programa.")
-        return
     print("  1 libra = $", round(tasa, 2))
 
-    # =================================================================
     # 2. TRANSFORMAR
     #En este paso tomamos los datos crudos extraidos para convertirlos en informacion
 
@@ -121,7 +147,6 @@ def main():
     if cantidad_alertas == 0:
         print("  No hay alertas.")
 
-    # =================================================================
     # 3. CARGAR
 
     titulo("3. REPORTE")
@@ -131,7 +156,7 @@ def main():
     os.makedirs(CARPETA_SALIDAS, exist_ok=True)             #( os.makedirs) Crea la carpeta_salidas si ya existe no hace nada (exist_ok=True)
     fecha = datetime.datetime.now().strftime("%Y-%m-%d")
     ruta_excel = os.path.join(CARPETA_SALIDAS, f"reporte_precios_{fecha}.xlsx")         #Variable que anota la direccion del archivo
-    ruta_grafico = os.path.join(CARPETA_SALIDAS, f"grafico_categorias_{fecha}.png")     
+    ruta_grafico = os.path.join(CARPETA_SALIDAS, f"grafico_precios_{fecha}.png")     
 
     print()
     reportes.guardar_excel(tabla, ruta_excel)       #Guarda el excel en la direccion escrita antes
@@ -158,26 +183,15 @@ def main():
 
     print("\n[Mail]")
     if GMAIL_USUARIO and GMAIL_PASSWORD:
-        cuerpo = (
-            f"Hola equipo de Compras,\n\n"
-            f"Resultado de la comparación de precios del {fecha}:\n"
-            f"- Libros analizados: {resumen['total_libros']}\n"
-            f"- Oportunidades: {resumen['oportunidades']}\n"
-            f"- Igualados: {resumen['igualados']}\n"
-            f"- Más caros que el competidor: {resumen['caros']}\n"
-            f"- Sin datos del competidor: {resumen['sin_datos']}\n\n"
-            f"Cotización usada: 1 libra = $ {round(tasa, 2)}\n\n"
-            f"Se adjunta el Excel con el detalle y el ranking de oportunidades, "
-            f"y el gráfico por categoría.\n"
-        )
+        cuerpo = armar_cuerpo_mail(resultados, resumen, tasa)
+        # En el asunto ponemos cuántos libros hay sin stock (cantidad_alertas la calculamos en el paso 2)
+        asunto = f"Reporte de precios {fecha} - {cantidad_alertas} libros para reponer"
         correo.enviar_reporte(GMAIL_USUARIO, GMAIL_PASSWORD, datos_propios.DESTINATARIOS,
-                              f"Reporte de precios - {fecha}", cuerpo,
-                              [ruta_excel, ruta_grafico])
+                              asunto, cuerpo, [ruta_excel, ruta_grafico])
     else:
         print("  No se envía el mail: faltan GMAIL_USUARIO o GMAIL_PASSWORD_APP en el .env")
 
     titulo("FIN")
-
 
 #Llamo a la funcion main
 

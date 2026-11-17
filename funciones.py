@@ -1,10 +1,7 @@
-# funciones.py
-
 # Margen para considerar dos precios "igualados": más o menos 2 %
 
-UMBRAL_IGUALADO = 2.0       #Si la diferencia de precios es mayor a 2% se considera igualado
+UMBRAL_IGUALADO = 2.0       # Si la diferencia está entre -2 % y +2 % se considera igualado
 
-# ---------------------------------------------------------------------
 # Normalizo titulos
 
 def normalizar_titulo(titulo):
@@ -13,8 +10,7 @@ def normalizar_titulo(titulo):
     titulo = " ".join(titulo.split())    # saca los espacios dobles del medio
     return titulo
 
-# ---------------------------------------------------------------------
-# OPERADORES: cálculos de precios
+# cálculos de precios
 
 def convertir_a_pesos(precio_libras, tasa_libra):
     return round(precio_libras * tasa_libra, 2)
@@ -22,13 +18,10 @@ def convertir_a_pesos(precio_libras, tasa_libra):
 def calcular_variacion(precio_propio, precio_competidor):
     return round((precio_propio - precio_competidor) / precio_competidor * 100, 2)
 
-
-def calcular_margen(precio, costo):
-    """Margen bruto: qué porcentaje del precio es ganancia."""
+def calcular_margen(precio, costo): #calcula margen de ganancia
     return round((precio - costo) / precio * 100, 2)
 
-# ---------------------------------------------------------------------
-# ESTRUCTURAS DE CONTROL: clasificar y recomendar
+# clasificar y recomendar
 
 def clasificar(variacion):
     #Clasifica el producto según cuánto más caro o barato es.
@@ -41,7 +34,6 @@ def clasificar(variacion):
     else:
         return "caro"
 
-
 def recomendar(clasificacion, stock):
 
     sin_stock = stock == 0
@@ -49,7 +41,7 @@ def recomendar(clasificacion, stock):
     if clasificacion == "caro" and sin_stock:
         return "URGENTE: reponer y revisar precio"
     elif clasificacion == "sin datos":
-        return "No se vende en el competidor"
+        return "El competidor no lo vende"
     elif sin_stock:
         return "Reponer stock"
     elif clasificacion == "caro":
@@ -59,9 +51,6 @@ def recomendar(clasificacion, stock):
     else:
         return "Mantener precio"
 
-
-# ---------------------------------------------------------------------
-# FUNCIÓN PRINCIPAL DE TRANSFORMACIÓN
 # Cruza nuestro catálogo con los precios del competidor.
 
 def comparar_catalogo(catalogo, precios_competidor, tasa_libra):
@@ -90,7 +79,6 @@ def comparar_catalogo(catalogo, precios_competidor, tasa_libra):
         resultados.append({
             "sku": libro["sku"],
             "titulo": " ".join(libro["titulo"].split()),   # sin espacios de más
-            "categoria": libro["categoria"],
             "precio_propio": libro["precio"],
             "precio_competidor": precio_comp_pesos,
             "variacion_pct": variacion,
