@@ -19,6 +19,8 @@ Windows: python -m pip install -r requirements.txt
 
 (requirements.txt tiene la lista de librerías que usa el programa)
 
+* * Descargar y guardar todo en una carpeta llamada TP_Retail ***
+
 # Crear un archivo .env con
 GMAIL_USUARIO=
 
