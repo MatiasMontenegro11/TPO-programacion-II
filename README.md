@@ -1,10 +1,10 @@
 # TPO-programacion-II
 
 # INTEGRANTES:
-Gonzalez Luz
-Gural Guadalupe
-Liberato Dalila
-Montenegro Matías
+Gonzalez Luz - 
+Gural Guadalupe - 
+Liberato Dalila - 
+Montenegro Matías - 
 Rivas Ayelen
 
 
