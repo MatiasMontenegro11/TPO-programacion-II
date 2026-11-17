@@ -70,8 +70,8 @@ ORDEN_ACCIONES = [
     "Revisar precio",
     "Destacar en promoción",
     "Mantener precio",
-    "No se vende en el competidor",
-]
+    "El competidor no lo vende",
+    ]
 
 def armar_cuerpo_mail(resultados, resumen, tasa):
     """Arma el texto del mail: un resumen corto y los libros agrupados por lo que hay que hacer."""
